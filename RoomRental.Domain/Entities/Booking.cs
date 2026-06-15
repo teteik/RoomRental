@@ -4,6 +4,7 @@ namespace RoomRental.Domain.Entities;
 
 public class Booking
 {
+    public const int MinHoursBeforeCancellation = 72;
     public Guid Id { get; init; }
     public Guid RoomId { get; init; }
     public Guid ClientId { get; init; }
@@ -11,7 +12,7 @@ public class Booking
     public DateTime EndTime { get; init; }
     public decimal Price { get; init; }
     public BookingStatus Status { get; private set; } = BookingStatus.Pending;
-
+    
     public Booking(Guid id, Guid roomId, Guid clientId, DateTime startTime, DateTime endTime, decimal price)
     {
         if (startTime >= endTime)
@@ -49,9 +50,11 @@ public class Booking
             throw new InvalidOperationException("Booking has already been cancelled");
         if (Status == BookingStatus.Completed)
             throw new InvalidOperationException("You cannot cancel a completed booking");
+        if (StartTime < DateTime.Now)
+            throw new InvalidOperationException("Cannot cancel a booking that has already started");
         var timeUntilStart = StartTime - DateTime.Now;
-        if (timeUntilStart.TotalHours < 72)
-            throw new InvalidOperationException("Cancellation is possible no later than 3 days (72 hours) before the start of the rental");
+        if (timeUntilStart.TotalHours < MinHoursBeforeCancellation)
+            throw new InvalidOperationException($"Cancellation is possible no later than {MinHoursBeforeCancellation} hours before the start of the rental");
         
         Status = BookingStatus.Cancelled;
     }
