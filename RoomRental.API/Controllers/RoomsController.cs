@@ -55,4 +55,50 @@ public class RoomsController : ControllerBase
             return BadRequest(e.Message);
         }
     }
+
+    [HttpPut("{id}")]
+    public async Task<ActionResult<RoomResponse>> Put(Guid id,[FromBody] UpdateRoomRequest request)
+    {
+        try
+        {
+            var room = await _context.Rooms.FindAsync(id);
+
+            if (room == null)
+                return NotFound();
+
+            room.UpdateName(request.Name);
+            room.SetCapacity(request.Capacity);
+            room.SetPrice(request.PricePerHour);
+            if (request.Description != null)
+                room.UpdateDescription(request.Description);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new RoomResponse
+            {
+                Id = room.Id,
+                Name = room.Name,
+                Capacity = room.Capacity,
+                PricePerHour = room.PricePerHour,
+                Description = room.Description
+            });
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> Delete(Guid id)
+    {
+        var room = await _context.Rooms.FindAsync(id);
+        if (room == null)
+            return NotFound();
+
+        _context.Rooms.Remove(room);
+        
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 }
