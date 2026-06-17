@@ -95,6 +95,9 @@ public class RoomsController : ControllerBase
         var room = await _context.Rooms.FindAsync(id);
         if (room == null)
             return NotFound();
+        
+        if (await _context.Bookings.AnyAsync(b => b.RoomId == id))
+            return Conflict("Cannot delete room because it has booking history");
 
         _context.Rooms.Remove(room);
         

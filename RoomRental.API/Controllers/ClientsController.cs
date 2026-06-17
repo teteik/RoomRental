@@ -92,6 +92,9 @@ public class ClientsController : ControllerBase
         if (client == null)
             return NotFound();
         
+        if (await _context.Bookings.AnyAsync(b => b.ClientId == id))
+            return Conflict("Cannot delete client because they have booking history");
+        
         _context.Clients.Remove(client);
         await _context.SaveChangesAsync();
         return NoContent();
