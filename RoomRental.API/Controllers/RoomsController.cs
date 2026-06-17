@@ -32,6 +32,23 @@ public class RoomsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<RoomResponse>> Get(Guid id)
+    {
+        var room = await _context.Rooms.FindAsync(id);
+        if (room == null)
+            return NotFound();
+
+        return Ok(new RoomResponse
+        {
+            Id = room.Id,
+            Name = room.Name,
+            Capacity = room.Capacity,
+            PricePerHour = room.PricePerHour,
+            Description = room.Description
+        });
+    }
+
     [HttpPost]
     public async Task<ActionResult<RoomResponse>> Post([FromBody] CreateRoomRequest request)
     {

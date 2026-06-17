@@ -32,6 +32,22 @@ public class ClientsController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ClientResponse>> Get(Guid id)
+    {
+        var client = await _context.Clients.FindAsync(id);
+        if (client == null)
+            return NotFound();
+
+        return Ok(new ClientResponse
+        {
+            Id = client.Id,
+            FullName = client.FullName,
+            Email = client.Email,
+            PhoneNumber = client.PhoneNumber
+        });
+    }
+
     [HttpPost]
     public async Task<ActionResult<ClientResponse>> Post([FromBody] CreateClientRequest request)
     {
@@ -56,7 +72,6 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-
     public async Task<ActionResult<ClientResponse>> Put(Guid id, [FromBody] UpdateClientRequest request)
     {
         try
