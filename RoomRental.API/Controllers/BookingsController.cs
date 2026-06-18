@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
+using RoomRental.Domain.Entities;
+using RoomRental.Domain.Enums;
 using RoomRental.Infrastructure.Data;
 
 namespace RoomRental.API.Controllers;
@@ -50,5 +52,59 @@ public class BookingsController : ControllerBase
             Price = booking.Price,
             Status = booking.Status
         });
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<BookingResponse>> Post([FromBody] CreateBookingRequest request)
+    {
+        try
+        {
+            var room = await _context.Rooms.FindAsync(request.RoomId);
+            if(room == null)
+                return NotFound("Room not found");
+            
+            var client = await _context.Clients.FindAsync(request.ClientId);
+            if(client == null)
+                return NotFound("Client not found");
+            var hasOverlap = await _context.Bookings
+                .AnyAsync(b => b.RoomId == request.RoomId
+                               && b.Status != BookingStatus.Cancelled
+                               && b.StartTime < request.EndTime 
+                               && b.EndTime > request.StartTime);
+            
+            if (hasOverlap)
+                return Conflict("Room is already booked for this time period");
+            
+            var hours = (decimal) (request.EndTime - request.StartTime).TotalMinutes / 60m;
+            var price = hours * room.PricePerHour;
+
+            var booking = new Booking
+            (
+                Guid.NewGuid(),
+                request.RoomId,
+                request.ClientId,
+                request.StartTime,
+                request.EndTime,
+                price
+            );
+            
+            _context.Bookings.Add(booking);
+            await _context.SaveChangesAsync();
+
+            return StatusCode(201, new BookingResponse
+            {
+                Id = booking.Id,
+                RoomId = booking.RoomId,
+                ClientId = booking.ClientId,
+                StartTime = booking.StartTime,
+                EndTime = booking.EndTime,
+                Price = price,
+                Status = booking.Status
+            });
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
     }
 }
