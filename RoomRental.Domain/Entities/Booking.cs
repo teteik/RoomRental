@@ -17,7 +17,7 @@ public class Booking
     {
         if (startTime >= endTime)
             throw new ArgumentException("Start time must be before end time");
-        if (startTime < DateTime.Now)
+        if (startTime < DateTime.UtcNow)
             throw new ArgumentException("Start time must be after now");
         if (startTime.Minute != 0 || startTime.Second != 0 || startTime.Millisecond != 0)
             throw new ArgumentException("Start must be exactly on the hour");
@@ -50,9 +50,9 @@ public class Booking
             throw new InvalidOperationException("Booking has already been cancelled");
         if (Status == BookingStatus.Completed)
             throw new InvalidOperationException("You cannot cancel a completed booking");
-        if (StartTime < DateTime.Now)
+        if (StartTime < DateTime.UtcNow)
             throw new InvalidOperationException("Cannot cancel a booking that has already started");
-        var timeUntilStart = StartTime - DateTime.Now;
+        var timeUntilStart = StartTime - DateTime.UtcNow;
         if (timeUntilStart.TotalHours < MinHoursBeforeCancellation)
             throw new InvalidOperationException($"Cancellation is possible no later than {MinHoursBeforeCancellation} hours before the start of the rental");
         
