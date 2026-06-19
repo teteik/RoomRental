@@ -22,16 +22,7 @@ public class BookingsController : ControllerBase
     public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookings()
     {
         var bookings = await _context.Bookings.ToListAsync();
-        var response = bookings.Select(b => new BookingResponse
-        {
-            Id = b.Id,
-            RoomId = b.RoomId,
-            ClientId = b.ClientId,
-            StartTime = b.StartTime,
-            EndTime = b.EndTime,
-            Price = b.Price,
-            Status = b.Status
-        });
+        var response = bookings.Select(MapToResponse);
         return Ok(response);
     }
 
@@ -42,16 +33,7 @@ public class BookingsController : ControllerBase
         if(booking == null)
             return NotFound();
         
-        return Ok(new BookingResponse
-        {
-            Id = booking.Id,
-            RoomId = booking.RoomId,
-            ClientId = booking.ClientId,
-            StartTime = booking.StartTime,
-            EndTime = booking.EndTime,
-            Price = booking.Price,
-            Status = booking.Status
-        });
+        return Ok(MapToResponse(booking));
     }
 
     [HttpPost]
@@ -91,20 +73,55 @@ public class BookingsController : ControllerBase
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
 
-            return StatusCode(201, new BookingResponse
-            {
-                Id = booking.Id,
-                RoomId = booking.RoomId,
-                ClientId = booking.ClientId,
-                StartTime = booking.StartTime,
-                EndTime = booking.EndTime,
-                Price = price,
-                Status = booking.Status
-            });
+            return StatusCode(201, MapToResponse(booking));
         }
         catch (ArgumentException e)
         {
             return BadRequest(e.Message);
         }
+    }
+
+    [HttpPost("{id}/cancel")]
+    public async Task<ActionResult<BookingResponse>> Cancel(Guid id)
+    {
+        return await ActionBooking(id, booking => booking.Cancel());
+    }
+    
+    [HttpPost("{id}/confirm")]
+    public async Task<ActionResult<BookingResponse>> Confirm(Guid id)
+    {
+        return await ActionBooking(id, booking => booking.Confirm());
+    }
+
+    private async Task<ActionResult<BookingResponse>> ActionBooking(Guid id, Action<Booking> action)
+    {
+        try
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking == null)
+                return NotFound();
+        
+            action(booking);
+            await _context.SaveChangesAsync();
+            return Ok(MapToResponse(booking));
+        }
+        catch (InvalidOperationException e)
+        {
+            return Conflict(e.Message);
+        }
+    }
+
+    private static BookingResponse MapToResponse(Booking booking)
+    {
+        return new BookingResponse
+        {
+            Id = booking.Id,
+            RoomId = booking.RoomId,
+            ClientId = booking.ClientId,
+            StartTime = booking.StartTime,
+            EndTime = booking.EndTime,
+            Price = booking.Price,
+            Status = booking.Status
+        };
     }
 }
