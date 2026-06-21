@@ -60,7 +60,7 @@ public class BookingsController : ControllerBase
             var hours = (decimal) (request.EndTime - request.StartTime).TotalMinutes / 60m;
             var price = hours * room.PricePerHour;
 
-            var booking = new Booking
+            var booking = Booking.Create 
             (
                 Guid.NewGuid(),
                 request.RoomId,

@@ -5,15 +5,17 @@ namespace RoomRental.Domain.Entities;
 public class Booking
 {
     public const int MinHoursBeforeCancellation = 72;
-    public Guid Id { get; init; }
-    public Guid RoomId { get; init; }
-    public Guid ClientId { get; init; }
-    public DateTime StartTime { get; init; }
-    public DateTime EndTime { get; init; }
-    public decimal Price { get; init; }
+    public Guid Id { get; private set; }
+    public Guid RoomId { get; private set; }
+    public Guid ClientId { get; private set; }
+    public DateTime StartTime { get; private set; }
+    public DateTime EndTime { get; private set; }
+    public decimal Price { get; private set; }
     public BookingStatus Status { get; private set; } = BookingStatus.Pending;
     
-    public Booking(Guid id, Guid roomId, Guid clientId, DateTime startTime, DateTime endTime, decimal price)
+    protected Booking() { }
+    
+    public static Booking Create(Guid id, Guid roomId, Guid clientId, DateTime startTime, DateTime endTime, decimal price)
     {
         if (startTime >= endTime)
             throw new ArgumentException("Start time must be before end time");
@@ -27,14 +29,16 @@ public class Booking
         var interval = endTime - startTime;
         if (interval.TotalHours < 1)
             throw new ArgumentException("Minimum rental time is 1 hour");
-
-        StartTime = startTime;
-        EndTime = endTime;
-
-        Id = id;
-        RoomId = roomId;
-        ClientId = clientId;
-        Price = price >= 0 ? price : throw new ArgumentException("Price must be positive");
+        
+        return new Booking
+        {
+            Id = id,
+            RoomId = roomId,
+            ClientId = clientId,
+            Price = price >= 0 ? price : throw new ArgumentException("Price must be positive"),
+            StartTime = startTime,
+            EndTime = endTime
+        };
     }
 
     public void Confirm()
