@@ -22,7 +22,11 @@ public class BookingsController : ControllerBase
     public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookings()
     {
         var bookings = await _context.Bookings.ToListAsync();
-        var response = bookings.Select(MapToResponse);
+        var response = new List<BookingResponse>();
+        foreach (var booking in bookings)
+        {
+            response.Add(await MapToResponse(booking));
+        }
         return Ok(response);
     }
 
@@ -33,7 +37,7 @@ public class BookingsController : ControllerBase
         if(booking == null)
             return NotFound();
         
-        return Ok(MapToResponse(booking));
+        return Ok(await MapToResponse(booking));
     }
 
     [HttpPost]
@@ -73,7 +77,7 @@ public class BookingsController : ControllerBase
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
 
-            return StatusCode(201, MapToResponse(booking));
+            return StatusCode(201, await MapToResponse(booking));
         }
         catch (ArgumentException e)
         {
@@ -103,7 +107,7 @@ public class BookingsController : ControllerBase
         
             action(booking);
             await _context.SaveChangesAsync();
-            return Ok(MapToResponse(booking));
+            return Ok(await MapToResponse(booking));
         }
         catch (InvalidOperationException e)
         {
@@ -111,12 +115,14 @@ public class BookingsController : ControllerBase
         }
     }
 
-    private static BookingResponse MapToResponse(Booking booking)
+    private async Task<BookingResponse> MapToResponse(Booking booking)
     {
+        var room = await _context.Rooms.FindAsync(booking.RoomId);
         return new BookingResponse
         {
             Id = booking.Id,
             RoomId = booking.RoomId,
+            RoomName = room?.Name ?? "Неизвестная комната",
             ClientId = booking.ClientId,
             StartTime = booking.StartTime,
             EndTime = booking.EndTime,
