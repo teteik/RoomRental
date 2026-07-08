@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
 using RoomRental.Domain.Entities;
+using RoomRental.Domain.Enums;
 using RoomRental.Infrastructure.Data;
 
 namespace RoomRental.API.Controllers;
@@ -120,5 +121,31 @@ public class RoomsController : ControllerBase
         
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    [HttpGet("{id}/schedule")]
+    public async Task<ActionResult<IEnumerable<BookedSlotResponse>>> GetSchedule(Guid id, [FromQuery] DateTime date)
+    {
+        var room = await _context.Rooms.FindAsync(id);
+        if (room == null)
+            return NotFound("Room not found");
+        
+        date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+        
+        var startOfDay = date.Date;
+        var endOfDay = date.Date.AddDays(1);
+
+        var bookedSlots = await _context.Bookings
+            .Where(b => b.RoomId == id
+                        && b.Status != BookingStatus.Cancelled
+                        && b.EndTime > startOfDay
+                        && b.StartTime < endOfDay)
+            .Select(b => new BookedSlotResponse
+            {
+                StartTime = b.StartTime,
+                EndTime = b.EndTime,
+            }).ToListAsync();
+        
+        return Ok(bookedSlots);
     }
 }
