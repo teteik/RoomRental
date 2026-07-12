@@ -45,7 +45,17 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
-        return Ok();
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return Unauthorized("Invalid email or password");
+        
+        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+        if (!result.Succeeded)
+            return Unauthorized("Invalid email or password");
+        
+        var token = await GenerateToken(user);
+        
+        return Ok(token);
     }
 
     private async Task<AuthResponse> GenerateToken(ApplicationUser user)
