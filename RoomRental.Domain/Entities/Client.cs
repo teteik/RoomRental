@@ -43,6 +43,11 @@ public class Client
     public void UpdatePhone(string phone)
     {
         if (string.IsNullOrWhiteSpace(phone))
+        {
+            PhoneNumber = string.Empty;
+            return; 
+        }
+        if (string.IsNullOrWhiteSpace(phone))
             throw new ArgumentException("Phone cannot be empty", nameof(phone));
     
         var cleanPhone = new string(phone.Where(char.IsDigit).ToArray());

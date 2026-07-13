@@ -19,14 +19,23 @@ public class BookingsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookings()
+    public async Task<ActionResult<IEnumerable<BookingResponse>>> GetBookings([FromQuery] Guid? clientId = null)
     {
-        var bookings = await _context.Bookings.ToListAsync();
+        IQueryable<Booking> query = _context.Bookings;
+
+        if (clientId.HasValue)
+        {
+            query = query.Where(b => b.ClientId == clientId.Value);
+        }
+
+        var bookings = await query.ToListAsync();
+    
         var response = new List<BookingResponse>();
         foreach (var booking in bookings)
         {
             response.Add(await MapToResponse(booking));
         }
+    
         return Ok(response);
     }
 

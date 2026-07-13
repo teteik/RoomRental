@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using RoomRental.API.DTOs;
 using RoomRental.Domain.Entities;
+using RoomRental.Infrastructure.Data;
 
 namespace RoomRental.API.Controllers;
 
@@ -13,13 +14,15 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IConfiguration _configuration;
+    private readonly AppDbContext _context;
 
     public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-        IConfiguration configuration)
+        IConfiguration configuration, AppDbContext context)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
+        _context = context;
     }
 
     [HttpPost("register")]
@@ -28,7 +31,8 @@ public class AuthController : ControllerBase
         ApplicationUser user = new ApplicationUser
         {
             Email = request.Email,
-            UserName = request.Email
+            UserName = request.Email,
+            FullName = request.FullName
         };
         var result = await _userManager.CreateAsync(user, request.Password);
 
@@ -36,6 +40,11 @@ public class AuthController : ControllerBase
             return BadRequest(result.Errors.Select(e => e.Description));
         
         await _userManager.AddToRoleAsync(user, "User");
+        var client = new Client(Guid.NewGuid(), request.FullName, request.Email, ""); 
+
+        _context.Clients.Add(client);
+        user.ClientId = client.Id;
+        await _context.SaveChangesAsync();
         
         var token = await GenerateToken(user);
         
@@ -86,7 +95,8 @@ public class AuthController : ControllerBase
             Token = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token),
             Email = user.Email!,
             FullName = user.FullName!,
-            Roles = roles.ToList()
+            Roles = roles.ToList(),
+            UserId = user.ClientId!.Value
         };
     }
 }
