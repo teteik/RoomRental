@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
@@ -100,6 +101,7 @@ public class BookingsController : ControllerBase
         return await ActionBooking(id, booking => booking.Cancel());
     }
     
+    [Authorize(Roles = "Admin")]
     [HttpPost("{id}/confirm")]
     public async Task<ActionResult<BookingResponse>> Confirm(Guid id)
     {

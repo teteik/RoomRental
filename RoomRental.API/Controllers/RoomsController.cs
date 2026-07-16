@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
@@ -50,6 +51,7 @@ public class RoomsController : ControllerBase
         });
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<ActionResult<RoomResponse>> Post([FromBody] CreateRoomRequest request)
     {
@@ -74,6 +76,7 @@ public class RoomsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<RoomResponse>> Put(Guid id,[FromBody] UpdateRoomRequest request)
     {
@@ -107,6 +110,7 @@ public class RoomsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {

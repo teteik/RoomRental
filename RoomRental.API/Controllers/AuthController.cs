@@ -94,9 +94,9 @@ public class AuthController : ControllerBase
         {
             Token = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token),
             Email = user.Email!,
-            FullName = user.FullName!,
+            FullName = user.FullName ?? user.Email!,
             Roles = roles.ToList(),
-            UserId = user.ClientId!.Value
+            UserId = user.ClientId
         };
     }
 }
