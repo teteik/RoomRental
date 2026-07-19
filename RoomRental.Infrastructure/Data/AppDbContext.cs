@@ -6,14 +6,15 @@ namespace RoomRental.Infrastructure.Data;
 
 public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
+    public DbSet<Room> Rooms { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
+    public DbSet<Client> Clients { get; set; }
+    public DbSet<RoomImage> RoomImages { get; set; }
+    
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
         
     }
-    
-    public DbSet<Room> Rooms { get; set; }
-    public DbSet<Booking> Bookings { get; set; }
-    public DbSet<Client> Clients { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
