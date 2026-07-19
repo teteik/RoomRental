@@ -7,4 +7,5 @@ public class RoomResponse
     public int Capacity { get; set; }
     public decimal PricePerHour { get; set; }
     public string? Description { get; set; }
+    public List<RoomImageResponse> Images { get; set; } = new(); 
 }

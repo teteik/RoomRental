@@ -9,6 +9,7 @@ public class Room
     public int Capacity { get; private set; }
     public decimal PricePerHour { get; private set; }
     public string? Description { get; private set; } 
+    public ICollection<RoomImage> Images {  get; set; } = new List<RoomImage>();
     public ICollection<Booking> Bookings { get; private set; } = new List<Booking>();
     
     public Room(Guid id, string name, int capacity, decimal pricePerHour, string? description = null)

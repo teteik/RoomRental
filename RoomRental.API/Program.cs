@@ -93,6 +93,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())

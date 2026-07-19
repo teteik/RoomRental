@@ -22,4 +22,8 @@
       <ProjectReference Include="..\RoomRental.Infrastructure\RoomRental.Infrastructure.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="wwwroot\images\" />
+    </ItemGroup>
+
 </Project>
