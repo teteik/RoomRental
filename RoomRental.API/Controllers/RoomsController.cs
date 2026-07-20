@@ -125,16 +125,12 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
     [Authorize(Roles = "Admin")]
     [HttpPost("{id}/images")]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<RoomResponse>> PostImages(Guid id, IFormFile file) 
+    public async Task<ActionResult<RoomResponse>> PostImages(Guid id, [FromForm] IFormFileCollection files) 
     {
-        if (file.Length == 0)
+        if (files.Count == 0)
             return BadRequest("File is empty");
             
         var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        
-        if (!allowedExtensions.Contains(extension))
-            return BadRequest("File is not a valid image format");
         
         var room = await context.Rooms
             .Include(r => r.Images) 
@@ -142,24 +138,36 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
             
         if (room == null)
             return NotFound("Room not found");
-        
-        var uniqueFileName = Guid.NewGuid() + extension;
-        
-        var imagesFolder = Path.Combine(env.WebRootPath, "images");
-        
-        if (!Directory.Exists(imagesFolder))
-            Directory.CreateDirectory(imagesFolder);
-        
-        var filePath = Path.Combine(imagesFolder, uniqueFileName);
-        using (var stream = new FileStream(filePath, FileMode.Create))
+
+        int order = room.Images.Count;
+        foreach (var file in files)
         {
-            await file.CopyToAsync(stream);
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest("File is not a valid image format");
+
+
+
+            var uniqueFileName = Guid.NewGuid() + extension;
+
+            var imagesFolder = Path.Combine(env.WebRootPath, "images");
+
+            if (!Directory.Exists(imagesFolder))
+                Directory.CreateDirectory(imagesFolder);
+
+            var filePath = Path.Combine(imagesFolder, uniqueFileName);
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            
+            var roomImage = new RoomImage(Guid.NewGuid(), id, $"/images/{uniqueFileName}", order);
+            context.RoomImages.Add(roomImage);
+
+            order++;
         }
-        
-        var currentCount = room.Images.Count; 
-        
-        var roomImage = new RoomImage(Guid.NewGuid(), id, $"/images/{uniqueFileName}", currentCount);
-        context.RoomImages.Add(roomImage);
+
         await context.SaveChangesAsync();
 
         return Ok(MapToResponse(room));
