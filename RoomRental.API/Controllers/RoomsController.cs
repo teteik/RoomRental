@@ -13,9 +13,24 @@ namespace RoomRental.API.Controllers;
 public class RoomsController(AppDbContext context, IWebHostEnvironment env) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<RoomResponse>>> Get()
+    public async Task<ActionResult<IEnumerable<RoomResponse>>> Get(string? search = null, int? minCapacity = null, decimal? maxPrice = null)
     {
-        var rooms = await context.Rooms.Include(r => r.Images).ToListAsync();
+        var query = context.Rooms.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var lowerSearch = search.ToLower();
+            query = query.Where(r => r.Name.ToLower().Contains(lowerSearch));
+        }
+
+        if (minCapacity != null)
+            query = query.Where(r => r.Capacity >= minCapacity.Value);
+
+        if (maxPrice != null)
+            query = query.Where(r => r.PricePerHour <= maxPrice.Value);
+
+
+        var rooms = await query.Include((r => r.Images)).ToListAsync();
         var response = rooms.Select(MapToResponse).ToList();
         return Ok(response);
     }
