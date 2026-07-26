@@ -210,6 +210,27 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
         
         return NoContent();
     }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id}/images/order")]
+    public async Task<ActionResult> UpdateImagesOrder(Guid id, [FromBody] List<UpdateImageOrderRequest> request)
+    {
+        var room = await context.Rooms
+            .Include(r => r.Images)
+            .FirstOrDefaultAsync(r => r.Id == id);
+        
+        if (room == null)
+            return NotFound("Room not found");
+
+        foreach (var item in request)
+        {
+            var image = room.Images.FirstOrDefault(i => i.Id == item.Id);
+            if (image != null)
+                image.Order = item.Order;
+        }
+        await context.SaveChangesAsync();
+        return NoContent();
+    }
     
     private RoomResponse MapToResponse(Room room)
     {
@@ -230,4 +251,5 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
                 .ToList()
         };
     }
+    
 }

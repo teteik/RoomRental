@@ -124,7 +124,7 @@ using (var scope = app.Services.CreateScope())
         if (result.Succeeded)
         {
             await userManager.AddToRoleAsync(adminUser, "Admin");
-            Console.WriteLine("✅ Администратор создан: admin@roomrental.com / Admin123!");
+            Console.WriteLine("Администратор создан: admin@roomrental.com / Admin123!");
         }
     }
 }
