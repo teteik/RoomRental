@@ -128,6 +128,22 @@ RoomRental/
 - **.NET 8 SDK**
 - **PostgreSQL 14+** 
 
+## Запуск через Docker (рекомендуется)
+Если у вас установлен Docker Desktop
+1. Запустите контейнеры:
+```bash
+docker-compose up --build -d
+```
+2. Важно: Примените миграции к базе данных внутри контейнера (при первом запуске):
+```bash
+cd RoomRental.API
+dotnet ef database update --connection "Host=localhost;Port=5433;Database=room_rental_db;Username=postgres;Password=mysecretpassword"
+```
+После этого API будет доступно по адресу:
+Swagger UI: http://localhost:5282/swagger
+
+
+## Альтернативный способ:
 ### 1. Клонирование репозитория
 ```bash
 git clone https://github.com/teteik/RoomRental.git
@@ -184,7 +200,7 @@ Swagger UI: `https://localhost:5282/swagger`
 - [ ] Пагинация для списков комнат и клиентов (`Skip`/`Take`)
 - [ ] Покрытие доменного слоя Unit-тестами (xUnit + Moq)
 - [ ] Интеграционные тесты API (WebApplicationFactory)
-- [ ] Docker-контейнеризация (Dockerfile + docker-compose для API и БД)
+- [x] Docker-контейнеризация (Dockerfile + docker-compose для API и БД)
 - [ ] Настройка CI/CD пайплайна через GitHub Actions
 - [ ] Структурированное логирование через Serilog
 - [ ] Вынос хранения файлов в облачное хранилище (S3 / Azure Blob Storage)
