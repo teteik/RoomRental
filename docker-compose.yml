@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: roomrental_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: room_rental_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - roomrental_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d room_rental_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: roomrental_api
+    ports:
+      - "5282:8080"
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=room_rental_db;Username=postgres;Password=mysecretpassword
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      db: 
+        condition: service_healthy
+    networks:
+      - roomrental_net
+
+volumes:
+  pgdata:
+
+networks:
+  roomrental_net:
+    driver: bridge
