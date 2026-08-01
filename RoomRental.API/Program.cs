@@ -98,34 +98,48 @@ app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
 {
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    
-    var roles = new[] { "Admin", "User" };
-    foreach (var role in roles)
+    var services = scope.ServiceProvider;
+    try
     {
-        if (!await roleManager.RoleExistsAsync(role))
+        var context = services.GetRequiredService<AppDbContext>();
+        await context.Database.MigrateAsync();
+
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        
+        var roles = new[] { "Admin", "User" };
+        foreach (var role in roles)
         {
-            await roleManager.CreateAsync(new IdentityRole(role));
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(new IdentityRole(role));
+            }
+        }
+        
+        var adminEmail = "admin@roomrental.com";
+        if (await userManager.FindByEmailAsync(adminEmail) == null)
+        {
+            var adminUser = new ApplicationUser 
+            { 
+                UserName = adminEmail, 
+                Email = adminEmail, 
+                FullName = "Главный Админ" 
+            };
+            
+            var result = await userManager.CreateAsync(adminUser, "Admin123!");
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+                Console.WriteLine("Администратор создан: admin@roomrental.com / Admin123!");
+            }
         }
     }
-    
-    var adminEmail = "admin@roomrental.com";
-    if (await userManager.FindByEmailAsync(adminEmail) == null)
+    catch (Exception ex)
     {
-        var adminUser = new ApplicationUser 
-        { 
-            UserName = adminEmail, 
-            Email = adminEmail, 
-            FullName = "Главный Админ" 
-        };
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Произошла ошибка при применении миграций или сидинге базы данных.");
         
-        var result = await userManager.CreateAsync(adminUser, "Admin123!");
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
-            Console.WriteLine("Администратор создан: admin@roomrental.com / Admin123!");
-        }
+        throw; 
     }
 }
 

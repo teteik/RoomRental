@@ -129,16 +129,12 @@ RoomRental/
 - **PostgreSQL 14+** 
 
 ## Запуск через Docker (рекомендуется)
-Если у вас установлен Docker Desktop
-1. Запустите контейнеры:
+Если у вас установлен Docker Desktop 
+Запустите контейнеры:
 ```bash
 docker-compose up --build -d
 ```
-2. Важно: Примените миграции к базе данных внутри контейнера (при первом запуске):
-```bash
-cd RoomRental.API
-dotnet ef database update --connection "Host=localhost;Port=5433;Database=room_rental_db;Username=postgres;Password=mysecretpassword"
-```
+
 После этого API будет доступно по адресу:
 Swagger UI: http://localhost:5282/swagger
 

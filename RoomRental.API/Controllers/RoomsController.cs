@@ -13,7 +13,7 @@ namespace RoomRental.API.Controllers;
 public class RoomsController(AppDbContext context, IWebHostEnvironment env) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<RoomResponse>>> Get(string? search = null, int? minCapacity = null, decimal? maxPrice = null)
+    public async Task<ActionResult<PagedResult<Room>>> Get(string? search = null, int? minCapacity = null, decimal? maxPrice = null, int pageNumber = 1, int pageSize = 9)
     {
         var query = context.Rooms.AsQueryable();
 
@@ -30,9 +30,16 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
             query = query.Where(r => r.PricePerHour <= maxPrice.Value);
 
 
-        var rooms = await query.Include((r => r.Images)).ToListAsync();
-        var response = rooms.Select(MapToResponse).ToList();
-        return Ok(response);
+        var totalCount = await query.CountAsync();
+        
+        var pagedRooms = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Include(r => r.Images)
+            .ToListAsync();
+        
+        var responseItems = pagedRooms.Select(MapToResponse).ToList();
+        return Ok(new PagedResult<RoomResponse>{TotalCount = totalCount, Items = responseItems});
     }
 
     [HttpGet("{id}")]
