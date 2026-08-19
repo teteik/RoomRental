@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RoomRental.Domain.Entities;
 using RoomRental.Infrastructure.Data;
+using RoomRental.API.Services; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,7 +18,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
     options.Password.RequiredLength = 6;
-}).AddEntityFrameworkStores<AppDbContext>()
+})
+.AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -33,13 +35,15 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["JWT:Issuer"],
-        ValidAudience = builder.Configuration["JWT:Audience"],
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],    
+        ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddSwaggerGen(c =>
 {
@@ -58,17 +62,21 @@ builder.Services.AddSwaggerGen(c =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference {  Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
+
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
-builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddDbContext<AppDbContext>(options => 
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
@@ -89,11 +97,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAngular");
 
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
 app.MapControllers();
 
 using (var scope = app.Services.CreateScope())
@@ -138,7 +147,6 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Произошла ошибка при применении миграций или сидинге базы данных.");
-        
         throw; 
     }
 }

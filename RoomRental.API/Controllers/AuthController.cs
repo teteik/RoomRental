@@ -1,9 +1,6 @@
-using System.Security.Claims;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using RoomRental.API.DTOs;
-using RoomRental.Domain.Entities;
-using RoomRental.Infrastructure.Data;
+using RoomRental.API.Services;
 
 namespace RoomRental.API.Controllers;
 
@@ -11,92 +8,38 @@ namespace RoomRental.API.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly IConfiguration _configuration;
-    private readonly AppDbContext _context;
+    private readonly IAuthService _authService;
 
-    public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager,
-        IConfiguration configuration, AppDbContext context)
+    public AuthController(IAuthService authService)
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _configuration = configuration;
-        _context = context;
+        _authService = authService;
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<AuthResponse>> Post([FromBody] RegisterRequest request)
+    public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
-        ApplicationUser user = new ApplicationUser
+        try
         {
-            Email = request.Email,
-            UserName = request.Email,
-            FullName = request.FullName
-        };
-        var result = await _userManager.CreateAsync(user, request.Password);
-
-        if (!result.Succeeded)
-            return BadRequest(result.Errors.Select(e => e.Description));
-        
-        await _userManager.AddToRoleAsync(user, "User");
-        var client = new Client(Guid.NewGuid(), request.FullName, request.Email, ""); 
-
-        _context.Clients.Add(client);
-        user.ClientId = client.Id;
-        await _context.SaveChangesAsync();
-        
-        var token = await GenerateToken(user);
-        
-        return Ok(token);
+            var response = await _authService.RegisterAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user == null)
-            return Unauthorized("Invalid email or password");
-        
-        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-        if (!result.Succeeded)
-            return Unauthorized("Invalid email or password");
-        
-        var token = await GenerateToken(user);
-        
-        return Ok(token);
-    }
-
-    private async Task<AuthResponse> GenerateToken(ApplicationUser user)
-    {
-        var roles = await _userManager.GetRolesAsync(user);
-        var claims = new List<Claim>
+        try
         {
-            new(ClaimTypes.NameIdentifier, user.Id),
-            new(ClaimTypes.Email, user.Email!),
-            new(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        };
-        foreach (var role in roles)
-            claims.Add(new Claim(ClaimTypes.Role, role));
-        var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-            System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
-        var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, 
-            Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
-
-        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
-            signingCredentials: creds);
-
-        return new AuthResponse
+            var response = await _authService.LoginAsync(request);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
         {
-            Token = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token),
-            Email = user.Email!,
-            FullName = user.FullName ?? user.Email!,
-            Roles = roles.ToList(),
-            UserId = user.ClientId
-        };
+            return Unauthorized(ex.Message);
+        }
     }
 }
