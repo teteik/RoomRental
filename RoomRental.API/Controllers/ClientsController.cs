@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
+using RoomRental.API.Services;
 using RoomRental.Domain.Entities;
 using RoomRental.Infrastructure.Data;
 
@@ -10,42 +11,32 @@ namespace RoomRental.API.Controllers;
 [Route("api/[controller]")]
 public class ClientsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IClientService _clientService;
 
-    public ClientsController(AppDbContext context)
+    public ClientsController(IClientService clientService)
     {
-        _context = context;
+        _clientService = clientService;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ClientResponse>>> Get()
     {
-        var clients = await _context.Clients.ToListAsync();
-        var response = clients.Select(c => new ClientResponse
-            {
-                Id = c.Id,
-                FullName = c.FullName,
-                Email = c.Email,
-                PhoneNumber = c.PhoneNumber
-            }
-        );
+        var response = await _clientService.GetClients();
         return Ok(response);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientResponse>> Get(Guid id)
     {
-        var client = await _context.Clients.FindAsync(id);
-        if (client == null)
-            return NotFound();
-
-        return Ok(new ClientResponse
+        try
         {
-            Id = client.Id,
-            FullName = client.FullName,
-            Email = client.Email,
-            PhoneNumber = client.PhoneNumber
-        });
+            var response = await _clientService.GetClientById(id);
+            return Ok(response);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
     }
 
     [HttpPost]
@@ -53,17 +44,8 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var client = new Client(Guid.NewGuid(), request.FullName, request.Email, request.PhoneNumber);
-            _context.Clients.Add(client);
-            await _context.SaveChangesAsync();
-
-            return StatusCode(201, new ClientResponse
-            {
-                Id = client.Id,
-                FullName = client.FullName,
-                Email = client.Email,
-                PhoneNumber = client.PhoneNumber
-            });
+            var client = await _clientService.CreateClient(request);
+            return StatusCode(201, client);
         }
         catch (ArgumentException e)
         {
@@ -76,23 +58,12 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var client = await _context.Clients.FindAsync(id);
-            if (client == null)
-                return NotFound();
-            
-            client.UpdateFullName(request.FullName);
-            client.UpdateEmail(request.Email);
-            client.UpdatePhone(request.PhoneNumber);
-            
-            await _context.SaveChangesAsync();
-            
-            return Ok(new ClientResponse
-            {
-                Id = client.Id,
-                FullName = client.FullName,
-                Email = client.Email,
-                PhoneNumber = client.PhoneNumber
-            });
+            var client = await _clientService.UpdateClient(id, request);
+            return Ok(client);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
         }
         catch (ArgumentException e)
         {
@@ -103,15 +74,18 @@ public class ClientsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var client = await _context.Clients.FindAsync(id);
-        if (client == null)
-            return NotFound();
-        
-        if (await _context.Bookings.AnyAsync(b => b.ClientId == id))
-            return Conflict("Cannot delete client because they have booking history");
-        
-        _context.Clients.Remove(client);
-        await _context.SaveChangesAsync();
-        return NoContent();
+        try
+        {
+            await _clientService.DeleteClient(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (InvalidOperationException e)
+        {
+            return Conflict(e.Message);
+        }
     }
 }
