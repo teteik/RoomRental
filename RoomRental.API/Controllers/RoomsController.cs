@@ -1,58 +1,43 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
+using RoomRental.API.Services;
 using RoomRental.Domain.Entities;
-using RoomRental.Domain.Enums;
-using RoomRental.Infrastructure.Data;
 
 namespace RoomRental.API.Controllers;
 
 [ApiController] 
 [Route("api/[controller]")]
-public class RoomsController(AppDbContext context, IWebHostEnvironment env) : ControllerBase
+public class RoomsController : ControllerBase
 {
-    [HttpGet]
-    public async Task<ActionResult<PagedResult<Room>>> Get(string? search = null, int? minCapacity = null, decimal? maxPrice = null, int pageNumber = 1, int pageSize = 9)
+    private readonly IRoomService _roomService;
+    private readonly IImageService _imageService;
+
+    public RoomsController(IRoomService roomService, IImageService imageService)
     {
-        var query = context.Rooms.AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var lowerSearch = search.ToLower();
-            query = query.Where(r => r.Name.ToLower().Contains(lowerSearch));
-        }
-
-        if (minCapacity != null)
-            query = query.Where(r => r.Capacity >= minCapacity.Value);
-
-        if (maxPrice != null)
-            query = query.Where(r => r.PricePerHour <= maxPrice.Value);
-
-
-        var totalCount = await query.CountAsync();
-        
-        var pagedRooms = await query
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .Include(r => r.Images)
-            .ToListAsync();
-        
-        var responseItems = pagedRooms.Select(MapToResponse).ToList();
-        return Ok(new PagedResult<RoomResponse>{TotalCount = totalCount, Items = responseItems});
+        _roomService = roomService;
+        _imageService = imageService;
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<RoomResponse>>> Get(string? search = null, int? minCapacity = null, decimal? maxPrice = null, int pageNumber = 1, int pageSize = 9)
+    {
+        var pagedRooms = await _roomService.GetRooms(search, minCapacity, maxPrice, pageNumber, pageSize);
+        return Ok(pagedRooms);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<RoomResponse>> Get(Guid id)
     {
-        var room = await context.Rooms
-            .Include(r => r.Images) 
-            .FirstOrDefaultAsync(r => r.Id == id);
-            
-        if (room == null)
-            return NotFound();
-
-        return Ok(MapToResponse(room));
+        try
+        {
+            var room = await _roomService.GetRoomById(id);
+            return Ok(room);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
     }
 
     [Authorize(Roles = "Admin")]
@@ -61,11 +46,8 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
     {
         try
         {
-            var room = new Room(Guid.NewGuid(), request.Name, request.Capacity, request.PricePerHour, request.Description);
-            context.Rooms.Add(room);
-            await context.SaveChangesAsync();
-            
-            return StatusCode(201, MapToResponse(room));
+            var room = await _roomService.CreateRoom(request);
+            return CreatedAtAction(nameof(Get), new { id = room.Id }, room);
         }
         catch (ArgumentException e)
         {
@@ -79,22 +61,12 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
     {
         try
         {
-            var room = await context.Rooms
-                .Include(r => r.Images)
-                .FirstOrDefaultAsync(r => r.Id == id);
-
-            if (room == null)
-                return NotFound();
-
-            room.UpdateName(request.Name);
-            room.SetCapacity(request.Capacity);
-            room.SetPrice(request.PricePerHour);
-            if (request.Description != null)
-                room.UpdateDescription(request.Description);
-
-            await context.SaveChangesAsync();
-
-            return Ok(MapToResponse(room));
+            var room = await _roomService.UpdateRoom(id, request);
+            return Ok(room);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
         }
         catch (ArgumentException e)
         {
@@ -106,42 +78,33 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
     [HttpDelete("{id}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var room = await context.Rooms.FindAsync(id);
-        if (room == null)
-            return NotFound();
-        
-        if (await context.Bookings.AnyAsync(b => b.RoomId == id))
-            return Conflict("Cannot delete room because it has booking history");
-
-        context.Rooms.Remove(room);
-        await context.SaveChangesAsync();
-        return NoContent();
+        try
+        {
+            await _roomService.DeleteRoom(id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (InvalidOperationException e)
+        {
+            return Conflict(e.Message);
+        }
     }
 
     [HttpGet("{id}/schedule")]
     public async Task<ActionResult<IEnumerable<BookedSlotResponse>>> GetSchedule(Guid id, [FromQuery] DateTime date)
     {
-        var room = await context.Rooms.FindAsync(id);
-        if (room == null)
-            return NotFound("Room not found");
-        
-        date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
-        
-        var startOfDay = date.Date;
-        var endOfDay = date.Date.AddDays(1);
-
-        var bookedSlots = await context.Bookings
-            .Where(b => b.RoomId == id
-                        && b.Status != BookingStatus.Cancelled
-                        && b.EndTime > startOfDay
-                        && b.StartTime < endOfDay)
-            .Select(b => new BookedSlotResponse
-            {
-                StartTime = b.StartTime,
-                EndTime = b.EndTime,
-            }).ToListAsync();
-        
-        return Ok(bookedSlots);
+        try
+        {
+            var bookedSlots = await _roomService.GetBookedSlots(id, date);
+            return Ok(bookedSlots);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
     }
 
     [Authorize(Roles = "Admin")]
@@ -149,114 +112,53 @@ public class RoomsController(AppDbContext context, IWebHostEnvironment env) : Co
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<RoomResponse>> PostImages(Guid id, [FromForm] IFormFileCollection files) 
     {
-        if (files.Count == 0)
-            return BadRequest("File is empty");
-            
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-        
-        var room = await context.Rooms
-            .Include(r => r.Images) 
-            .FirstOrDefaultAsync(r => r.Id == id);
-            
-        if (room == null)
-            return NotFound("Room not found");
-
-        int order = room.Images.Count;
-        foreach (var file in files)
+        try
         {
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
-            if (!allowedExtensions.Contains(extension))
-                return BadRequest("File is not a valid image format");
-
-
-
-            var uniqueFileName = Guid.NewGuid() + extension;
-
-            var imagesFolder = Path.Combine(env.WebRootPath, "images");
-
-            if (!Directory.Exists(imagesFolder))
-                Directory.CreateDirectory(imagesFolder);
-
-            var filePath = Path.Combine(imagesFolder, uniqueFileName);
-            await using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
-            
-            var roomImage = new RoomImage(Guid.NewGuid(), id, $"/images/{uniqueFileName}", order);
-            context.RoomImages.Add(roomImage);
-
-            order++;
+            var images = await _imageService.AddImagesToRoom(id,  files);
+            return Ok(images);
         }
-
-        await context.SaveChangesAsync();
-
-        return Ok(MapToResponse(room));
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
     }
 
     [Authorize(Roles = "Admin")]
     [HttpDelete("{id}/images/{imageId}")] 
     public async Task<ActionResult> DeleteImages(Guid id, Guid imageId)
     {
-        var image = await context.RoomImages.FindAsync(imageId);
-        if (image == null)
-            return NotFound("Image not found");
-        
-        if (image.RoomId != id)
-            return BadRequest("Image does not belong to this room");
-        
-        var filePath = Path.Combine(env.WebRootPath, image.ImageUrl.TrimStart('/'));
-        if (System.IO.File.Exists(filePath))
+        try
         {
-            System.IO.File.Delete(filePath);
+            await _imageService.DeleteImagesFromRoom(id, imageId);
+            return NoContent();
         }
-        
-        context.RoomImages.Remove(image);
-        await context.SaveChangesAsync();
-        
-        return NoContent();
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
     }
 
     [Authorize(Roles = "Admin")]
     [HttpPut("{id}/images/order")]
     public async Task<ActionResult> UpdateImagesOrder(Guid id, [FromBody] List<UpdateImageOrderRequest> request)
     {
-        var room = await context.Rooms
-            .Include(r => r.Images)
-            .FirstOrDefaultAsync(r => r.Id == id);
-        
-        if (room == null)
-            return NotFound("Room not found");
-
-        foreach (var item in request)
+        try
         {
-            var image = room.Images.FirstOrDefault(i => i.Id == item.Id);
-            if (image != null)
-                image.Order = item.Order;
+            await _imageService.UpdateImagesOrder(id, request);
+            return NoContent();
         }
-        await context.SaveChangesAsync();
-        return NoContent();
-    }
-    
-    private RoomResponse MapToResponse(Room room)
-    {
-        return new RoomResponse
+        catch (KeyNotFoundException e)
         {
-            Id = room.Id,
-            Name = room.Name,
-            Capacity = room.Capacity,
-            PricePerHour = room.PricePerHour,
-            Description = room.Description,
-            Images = room.Images
-                .OrderBy(i => i.Order)
-                .Select(i => new RoomImageResponse 
-                { 
-                    Id = i.Id,       
-                    ImageUrl = i.ImageUrl 
-                })
-                .ToList()
-        };
+            return NotFound(e.Message);
+        }
+        
     }
-    
 }

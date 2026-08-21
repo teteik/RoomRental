@@ -45,6 +45,7 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
 
 builder.Services.AddSwaggerGen(c =>
 {
