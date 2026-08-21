@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using RoomRental.API.DTOs;
 using RoomRental.API.Services;
-using RoomRental.Domain.Entities;
-using RoomRental.Infrastructure.Data;
 
 namespace RoomRental.API.Controllers;
 
@@ -21,7 +18,7 @@ public class ClientsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ClientResponse>>> Get()
     {
-        var response = await _clientService.GetClients();
+        var response = await _clientService.GetClientsAsync();
         return Ok(response);
     }
 
@@ -30,7 +27,7 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var response = await _clientService.GetClientById(id);
+            var response = await _clientService.GetClientByIdAsync(id);
             return Ok(response);
         }
         catch (KeyNotFoundException e)
@@ -44,8 +41,8 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var client = await _clientService.CreateClient(request);
-            return StatusCode(201, client);
+            var client = await _clientService.CreateClientAsync(request);
+            return CreatedAtAction(nameof(Get), new { id = client.Id }, client);
         }
         catch (ArgumentException e)
         {
@@ -58,7 +55,7 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var client = await _clientService.UpdateClient(id, request);
+            var client = await _clientService.UpdateClientAsync(id, request);
             return Ok(client);
         }
         catch (KeyNotFoundException e)
@@ -76,7 +73,7 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            await _clientService.DeleteClient(id);
+            await _clientService.DeleteClientAsync(id);
             return NoContent();
         }
         catch (KeyNotFoundException e)

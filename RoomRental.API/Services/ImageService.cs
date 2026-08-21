@@ -19,7 +19,7 @@ public class ImageService : IImageService
         _env = env;
     }
     
-    public async Task<RoomResponse> AddImagesToRoom(Guid roomId, IFormFileCollection files)
+    public async Task<RoomResponse> AddImagesToRoomAsync(Guid roomId, IFormFileCollection files)
     {
         ArgumentNullException.ThrowIfNull(files);
         if (files.Count == 0)
@@ -53,7 +53,7 @@ public class ImageService : IImageService
         return RoomMapper.ToResponse(room);
     }
 
-    public async Task UpdateImagesOrder(Guid roomId, List<UpdateImageOrderRequest> request)
+    public async Task UpdateImagesOrderAsync(Guid roomId, List<UpdateImageOrderRequest> request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -74,7 +74,7 @@ public class ImageService : IImageService
         await _context.SaveChangesAsync();
     }
 
-    public async Task DeleteImagesFromRoom(Guid roomId, Guid imageId)
+    public async Task DeleteImagesFromRoomAsync(Guid roomId, Guid imageId)
     {
         var image = await _context.RoomImages.FindAsync(imageId)
             ?? throw new KeyNotFoundException($"Image with id {imageId} not found");

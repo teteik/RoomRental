@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomRental.API.DTOs;
 using RoomRental.API.Services;
-using RoomRental.Domain.Entities;
 
 namespace RoomRental.API.Controllers;
 
@@ -22,7 +21,7 @@ public class RoomsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedResult<RoomResponse>>> Get(string? search = null, int? minCapacity = null, decimal? maxPrice = null, int pageNumber = 1, int pageSize = 9)
     {
-        var pagedRooms = await _roomService.GetRooms(search, minCapacity, maxPrice, pageNumber, pageSize);
+        var pagedRooms = await _roomService.GetRoomsAsync(search, minCapacity, maxPrice, pageNumber, pageSize);
         return Ok(pagedRooms);
     }
 
@@ -31,7 +30,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var room = await _roomService.GetRoomById(id);
+            var room = await _roomService.GetRoomByIdAsync(id);
             return Ok(room);
         }
         catch (KeyNotFoundException e)
@@ -46,7 +45,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var room = await _roomService.CreateRoom(request);
+            var room = await _roomService.CreateRoomAsync(request);
             return CreatedAtAction(nameof(Get), new { id = room.Id }, room);
         }
         catch (ArgumentException e)
@@ -61,7 +60,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var room = await _roomService.UpdateRoom(id, request);
+            var room = await _roomService.UpdateRoomAsync(id, request);
             return Ok(room);
         }
         catch (KeyNotFoundException e)
@@ -80,7 +79,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            await _roomService.DeleteRoom(id);
+            await _roomService.DeleteRoomAsync(id);
             return NoContent();
         }
         catch (KeyNotFoundException e)
@@ -98,7 +97,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var bookedSlots = await _roomService.GetBookedSlots(id, date);
+            var bookedSlots = await _roomService.GetBookedSlotsAsync(id, date);
             return Ok(bookedSlots);
         }
         catch (KeyNotFoundException e)
@@ -114,7 +113,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            var images = await _imageService.AddImagesToRoom(id,  files);
+            var images = await _imageService.AddImagesToRoomAsync(id,  files);
             return Ok(images);
         }
         catch (KeyNotFoundException e)
@@ -133,7 +132,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            await _imageService.DeleteImagesFromRoom(id, imageId);
+            await _imageService.DeleteImagesFromRoomAsync(id, imageId);
             return NoContent();
         }
         catch (KeyNotFoundException e)
@@ -152,7 +151,7 @@ public class RoomsController : ControllerBase
     {
         try
         {
-            await _imageService.UpdateImagesOrder(id, request);
+            await _imageService.UpdateImagesOrderAsync(id, request);
             return NoContent();
         }
         catch (KeyNotFoundException e)

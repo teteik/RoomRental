@@ -15,7 +15,7 @@ public class RoomService : IRoomService
         _context = context;
     }
 
-    public async Task<PagedResult<RoomResponse>> GetRooms(string? search, int? minCapacity, decimal? maxPrice, int pageNumber, int pageSize)
+    public async Task<PagedResult<RoomResponse>> GetRoomsAsync(string? search, int? minCapacity, decimal? maxPrice, int pageNumber, int pageSize)
     {
         var query = _context.Rooms.AsQueryable();
 
@@ -45,7 +45,7 @@ public class RoomService : IRoomService
         return new PagedResult<RoomResponse> { TotalCount = totalCount, Items = responseItems };
     }
     
-    public async Task<RoomResponse> GetRoomById(Guid id)
+    public async Task<RoomResponse> GetRoomByIdAsync(Guid id)
     {
         var room = await _context.Rooms
             .Include(r => r.Images) 
@@ -57,7 +57,7 @@ public class RoomService : IRoomService
         return  RoomMapper.ToResponse(room);
     }
 
-    public async Task<RoomResponse> CreateRoom(CreateRoomRequest request)
+    public async Task<RoomResponse> CreateRoomAsync(CreateRoomRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         
@@ -68,7 +68,7 @@ public class RoomService : IRoomService
         return RoomMapper.ToResponse(room);
     }
 
-    public async Task<RoomResponse> UpdateRoom(Guid id, UpdateRoomRequest request)
+    public async Task<RoomResponse> UpdateRoomAsync(Guid id, UpdateRoomRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         
@@ -90,7 +90,7 @@ public class RoomService : IRoomService
         return  RoomMapper.ToResponse(room);
     }
 
-    public async Task DeleteRoom(Guid id)
+    public async Task DeleteRoomAsync(Guid id)
     {
         var room = await _context.Rooms.FindAsync(id);
         
@@ -104,7 +104,7 @@ public class RoomService : IRoomService
         await _context.SaveChangesAsync();
     }
 
-    public async Task<IEnumerable<BookedSlotResponse>> GetBookedSlots(Guid id, DateTime date)
+    public async Task<IEnumerable<BookedSlotResponse>> GetBookedSlotsAsync(Guid id, DateTime date)
     {
         var room = await _context.Rooms.FindAsync(id);
         if (room == null)

@@ -14,7 +14,7 @@ public class ClientService : IClientService
         _context = context;
     }
     
-    public async Task<IEnumerable<ClientResponse>> GetClients()
+    public async Task<IEnumerable<ClientResponse>> GetClientsAsync()
     {
         var clients = await _context.Clients.ToListAsync();
         var response = clients.Select(MapToResponse);
@@ -22,7 +22,7 @@ public class ClientService : IClientService
         return response;
     }
 
-    public async Task<ClientResponse> GetClientById(Guid id)
+    public async Task<ClientResponse> GetClientByIdAsync(Guid id)
     {
         var client = await _context.Clients.FindAsync(id);
         if (client == null)
@@ -31,7 +31,7 @@ public class ClientService : IClientService
         return MapToResponse(client);
     }
 
-    public async Task<ClientResponse> CreateClient(CreateClientRequest request)
+    public async Task<ClientResponse> CreateClientAsync(CreateClientRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         
@@ -42,7 +42,7 @@ public class ClientService : IClientService
         return MapToResponse(client);
     }
 
-    public async Task<ClientResponse> UpdateClient(Guid id, UpdateClientRequest request)
+    public async Task<ClientResponse> UpdateClientAsync(Guid id, UpdateClientRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         
@@ -59,7 +59,7 @@ public class ClientService : IClientService
         return MapToResponse(client);
     }
 
-    public async Task DeleteClient(Guid id)
+    public async Task DeleteClientAsync(Guid id)
     {
         var client = await _context.Clients.FindAsync(id);
         if (client == null)
