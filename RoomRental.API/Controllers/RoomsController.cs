@@ -114,7 +114,7 @@ public class RoomsController : ControllerBase
         try
         {
             var images = await _imageService.AddImagesToRoomAsync(id,  files);
-            return Ok(images);
+            return CreatedAtAction(nameof(Get), new { id }, images);
         }
         catch (KeyNotFoundException e)
         {
