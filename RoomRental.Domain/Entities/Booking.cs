@@ -7,6 +7,7 @@ public class Booking
     public const int MinHoursBeforeCancellation = 72;
     public Guid Id { get; private set; }
     public Guid RoomId { get; private set; }
+    public Room Room { get; private set; } = null!;
     public Guid ClientId { get; private set; }
     public DateTime StartTime { get; private set; }
     public DateTime EndTime { get; private set; }
